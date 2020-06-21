@@ -116,3 +116,25 @@ plot(cmtree$table, col = cmtree$byClass,
 ```
 the accuracy rate of the model is low: 0.6967
 
+## random forest
+```{r, echo = TRUE, cache = TRUE}
+##install.packages("randomForest")
+library(randomForest)
+controlRF <- trainControl(method="cv", number=3, verboseIter=FALSE)
+modRF1 <- train(classe ~ ., data=TrainSet, method="rf", trControl=controlRF)
+modRF1$finalModel
+
+predictRF1 <- predict(modRF1, newdata=TestSet)
+cmrf <- confusionMatrix(predictRF1, TestSet$classe)
+cmrf
+
+plot(modRF1)
+```
+## evaluation
+Random Forest model will be applied to predict the 20 quiz results
+
+
+```{r, echo = TRUE}
+Results <- predict(modRF1, newdata=validData)
+Results
+```

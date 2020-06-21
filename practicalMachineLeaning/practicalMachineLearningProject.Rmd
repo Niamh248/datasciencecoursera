@@ -1,0 +1,118 @@
+---
+title: "Practical Machine Learning Project"
+author: "Niamh Phillips"
+date: "19/06/2020"
+output: html_document
+---
+
+## Assignment
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+### Background Information 
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+## Leading and Preparing Data 
+
+```{r, echo = TRUE, cache=TRUE}
+library(caret)
+##install.packages("corrplot")
+##install.packages("rpart")
+##install.packages("rpart.plot")
+##install.packages("rpart.plot")
+##install.packages("rattle")
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+train <- read.csv("pml-training.csv") 
+test <- read.csv("pml-testing.csv")
+
+dim(train)
+dim(test)
+
+sum(complete.cases(train))
+
+```
+. The training data set contains 19622 observations and 160 variables
+. The testing data set contains 20 observations and 160 variables
+
+Next we need to split the training data into two and create a seed to make it reproducable. As well as removing NA and near zero values
+```{r, echo = TRUE, cache=TRUE}
+set.seed(10)
+inTrain  <- createDataPartition(train$classe, p=0.7, list=FALSE)
+TrainSet <- train[inTrain, ]
+TestSet  <- train[-inTrain, ]
+dim(TrainSet)
+
+dim(TestSet)
+
+NZV <- nearZeroVar(TrainSet)
+TrainSet <- TrainSet[, -NZV]
+TestSet  <- TestSet[, -NZV]
+dim(TrainSet)
+dim(TestSet)
+# remove identification only variables (columns 1 to 5)
+TrainSet <- TrainSet[, -(1:5)]
+TestSet  <- TestSet[, -(1:5)]
+dim(TrainSet)
+
+AllNA    <- sapply(TrainSet, function(x) mean(is.na(x))) > 0.95
+TrainSet <- TrainSet[, AllNA==FALSE]
+TestSet  <- TestSet[, AllNA==FALSE]
+```
+## Model Building
+Correlation amoungst vriables is shown below
+```{r, echo = TRUE}
+corMatrix <- cor(TrainSet[, -54])
+corrplot(corMatrix, order = "FPC", method = "color", type = "lower", 
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+
+```
+The highly correlated variables are shown in dark colors in the graph above
+
+
+```{r, echo = TRUE}
+# model fit
+set.seed(1221)
+treeModel <- rpart(classe ~ ., data=TrainSet, method="class")
+prp(treeModel) # fast plot
+
+```
+## Applying Model to Test Data 
+Random forest prediction model
+
+```{r, echo = TRUE, cache = TRUE}
+set.seed(12345)
+library(rpart)
+decisionTreeMod1 <- rpart(classe ~ ., data=TrainSet, method="class")
+fancyRpartPlot(decisionTreeMod1)
+```
+
+```{r,echo = TRUE}
+predictTreeMod1 <- predict(decisionTreeMod1, TestSet, type = "class")
+cmtree <- confusionMatrix(predictTreeMod1, TestSet$classe)
+cmtree
+```
+
+``````{r,echo = TRUE}
+plot(cmtree$table, col = cmtree$byClass, 
+     main = paste("Decision Tree - Accuracy =", round(cmtree$overall['Accuracy'], 4)))
+
+```
+the accuracy rate of the model is low: 0.6967
+
